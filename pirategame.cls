@@ -21,6 +21,7 @@
 \RequirePackage{geometry} % Pour ajuster les marges
 \RequirePackage{array}
 \RequirePackage{amsmath}
+\RequirePackage{hyperref}
 \geometry{margin=1in}
 
 \usetikzlibrary{calc,fadings}
@@ -53,7 +54,7 @@
       {\includegraphics[width=#1\textwidth]{#2}};
       % Add gradient transparency around the logo
     %   \shade[inner color=transparent!0, outer color=transparent!100]
-    %   ([xshift=-1cm, yshift=-1cm]image.south west) -- 
+    %   ([xshift=-1cm, yshift=-1cm]image.south west) --
     %   ([xshift=1cm, yshift=-1cm]image.south east) --
     %   ([xshift=1cm, yshift=1cm]image.north east) --
     %   ([xshift=-1cm, yshift=1cm]image.north west) -- cycle;
