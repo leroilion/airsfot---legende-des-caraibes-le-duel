@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Répartition des Trésors</title>
+    <link rel="icon" href="img/favicon.ico" type="image/x-icon">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            padding: 0;
+            background-color: #f4f4f9;
+        }
+        h1, h2 {
+            text-align: center;
+            color: #333;
+        }
+        .container {
+            max-width: 800px;
+            margin: auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        label {
+            font-weight: bold;
+        }
+        input {
+            width: calc(100% - 20px);
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #007BFF;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        table, th, td {
+            border: 1px solid #ddd;
+        }
+        th, td {
+            padding: 10px;
+            text-align: center;
+        }
+        .results {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Répartition des Trésors</h1>
+        <h2>Paramètres</h2>
+        <label for="nbGamers">Nombre de joueurs :</label>
+        <input type="number" id="nbGamers" placeholder="Exemple : 40" value="40">
+
+        <label for="squadSize">Taille des squads :</label>
+        <input type="number" id="squadSize" placeholder="Exemple : 4" value="4">
+
+        <label for="treasurePerTeam">Trésors par équipe :</label>
+        <input type="number" id="treasurePerTeam" placeholder="Exemple : 2" value="2">
+
+        <button onclick="calculateRepartition()">Calculer</button>
+
+        <div class="results" id="results"></div>
+    </div>
+
+    <script>
+        function repartitionContainers(nbContainers, insideTreasures, variations) {
+            const containers = Array.from({ length: nbContainers }, () => {
+                return Object.keys(insideTreasures).reduce((acc, key) => {
+                    acc[key] = 0;
+                    return acc;
+                }, {});
+            });
+
+            if (!variations) {
+                variations = {};
+                Object.keys(insideTreasures).forEach(key => variations[key] = 1);
+            }
+
+            const maxTreasure = {};
+            Object.keys(insideTreasures).forEach(key => {
+                maxTreasure[key] = Math.round(insideTreasures[key] / nbContainers) + (variations[key] || 0);
+            });
+
+            for (const treasure in insideTreasures) {
+                let remaining = insideTreasures[treasure];
+                while (remaining > 0) {
+                    const index = Math.floor(Math.random() * nbContainers);
+                    if (containers[index][treasure] < maxTreasure[treasure]) {
+                        containers[index][treasure]++;
+                        remaining--;
+                    }
+                }
+            }
+
+            return containers;
+        }
+
+        function calculateRepartition() {
+            const nbGamers = parseInt(document.getElementById('nbGamers').value);
+            const squadSize = parseInt(document.getElementById('squadSize').value);
+            const treasurePerTeam = parseInt(document.getElementById('treasurePerTeam').value);
+
+            const treasures = {
+                piece: { qty: null, value: 1 },
+                gem: { qty: null, value: 2 },
+                statuette: { qty: 2, value: null },
+                goldMask: { qty: 1, value: null }
+            };
+
+            const distribution = {
+                pouch: { qty: 2 / 3, piece: 3, gem: 1 },
+                chest: { qty: 1 / 3, piece: 5, gem: 2 }
+            };
+
+            const nbTeams = Math.floor(nbGamers / squadSize);
+            const totalTreasures = treasurePerTeam * nbTeams;
+            let remainingTreasures = totalTreasures - (treasures.statuette.qty + treasures.goldMask.qty);
+
+            treasures.piece.qty = Math.round(remainingTreasures * distribution.pouch.qty * distribution.pouch.piece +
+                                             remainingTreasures * distribution.chest.qty * distribution.chest.piece);
+
+            treasures.gem.qty = Math.round(remainingTreasures * distribution.pouch.qty * distribution.pouch.gem +
+                                           remainingTreasures * distribution.chest.qty * distribution.chest.gem);
+
+            const chestCount = Math.round(remainingTreasures * distribution.chest.qty);
+            const pouchCount = Math.round(remainingTreasures * distribution.pouch.qty);
+
+            const chestRepartition = repartitionContainers(chestCount, { piece: treasures.piece.qty * distribution.chest.qty, gem: treasures.gem.qty  * distribution.chest.qty}, { piece: 2, gem: 1 });
+            const pouchRepartition = repartitionContainers(pouchCount, { piece: treasures.piece.qty * distribution.pouch.qty, gem: treasures.gem.qty  * distribution.pouch.qty}, { piece: 2, gem: 1 });
+
+            const remainingPoints = Math.round((treasures.piece.qty * treasures.piece.value +
+                                                treasures.gem.qty * treasures.gem.value) / 2);
+
+            const totalCoefficient = treasures.statuette.qty + treasures.goldMask.qty * 1.5;
+
+            treasures.statuette.value = Math.round((remainingPoints / totalCoefficient));
+            treasures.goldMask.value = Math.round((1.5 * remainingPoints / totalCoefficient));
+
+            displayResults(treasures, chestCount, pouchCount, chestRepartition, pouchRepartition);
+        }
+
+        function displayResults(treasures, chestCount, pouchCount, chestRepartition, pouchRepartition) {
+            const resultsDiv = document.getElementById('results');
+
+            let html = `<h2>Résultats</h2>`;
+            html += `<table>
+                        <thead>
+                            <tr>
+                                <th>Élément</th>
+                                <th>Quantité</th>
+                                <th>Valeur</th>
+                            </tr>
+                        </thead>
+                        <tbody>`;
+
+            for (const [key, data] of Object.entries(treasures)) {
+                html += `<tr>
+                            <td>${key}</td>
+                            <td>${data.qty ?? '-'}</td>
+                            <td>${data.value ?? '-'}</td>
+                         </tr>`;
+            }
+
+            html += `   </tbody>
+                    </table>`;
+
+            html += `<h2>Répartition</h2>`;
+            html += `<p><strong>Nombre de Coffres :</strong> ${chestCount}</p>`;
+            html += `<p><strong>Nombre de Bourses :</strong> ${pouchCount}</p>`;
+
+            html += `<h3>Répartition des Coffres</h3>`;
+            html += `<table>
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Pièces</th>
+                                <th>Gemmes</th>
+                            </tr>
+                        </thead>
+                        <tbody>`;
+
+            chestRepartition.forEach((chest, index) => {
+                html += `<tr>
+                            <td>Coffre ${index + 1}</td>
+                            <td>${chest.piece}</td>
+                            <td>${chest.gem}</td>
+                         </tr>`;
+            });
+
+            html += `   </tbody>
+                    </table>`;
+
+            html += `<h3>Répartition des Bourses</h3>`;
+            html += `<table>
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Pièces</th>
+                                <th>Gemmes</th>
+                            </tr>
+                        </thead>
+                        <tbody>`;
+
+            pouchRepartition.forEach((pouch, index) => {
+                html += `<tr>
+                            <td>Bourse ${index + 1}</td>
+                            <td>${pouch.piece}</td>
+                            <td>${pouch.gem}</td>
+                         </tr>`;
+            });
+
+            html += `   </tbody>
+                    </table>`;
+
+            resultsDiv.innerHTML = html;
+        }
+    </script>
+</body>
+</html>
